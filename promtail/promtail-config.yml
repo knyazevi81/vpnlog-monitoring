@@ -35,7 +35,7 @@ scrape_configs:
           email:
 
       # Дополнительные поля как structured metadata
-      - structured_metadata:
-          client_ip:
-          destination:
-          dest_port:
+      #- structured_metadata:
+      #    client_ip:
+      #    destination:
+      #    dest_port:
