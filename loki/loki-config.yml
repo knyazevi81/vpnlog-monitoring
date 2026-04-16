@@ -30,8 +30,8 @@ ruler:
   alertmanager_url: http://localhost:9093
 
 limits_config:
-  max_query_series_limit: 10000
-  max_entries_limit_per_query: 50000
+  # max_query_series_limit: 10000
+  # max_entries_limit_per_query: 50000
   retention_period: 30d
   reject_old_samples: false
   reject_old_samples_max_age: 720h
