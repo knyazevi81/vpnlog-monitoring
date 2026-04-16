@@ -1,0 +1,208 @@
+{
+  "id": null,
+  "uid": "xui-dashboard",
+  "title": "X-UI VPN Dashboard",
+  "tags": ["x-ui", "vpn"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "email",
+        "type": "query",
+        "datasource": "Loki",
+        "query": "label_values({job=\"x-ui\"}, email)",
+        "label": "Пользователь",
+        "multi": true,
+        "includeAll": true,
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Всего подключений за период",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "count_over_time({job=\"x-ui\", email=~\"$email\"} |= \"accepted\" [$__range])",
+          "legendFormat": "Подключения"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["sum"] },
+        "colorMode": "background",
+        "graphMode": "none",
+        "orientation": "auto"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "green" },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Активных пользователей сейчас",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "count(count_over_time({job=\"x-ui\"} |= \"accepted\" | regexp `email: (?P<email>\\S+)` [5m]) by (email))",
+          "legendFormat": "Активные"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["last"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "blue" },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "TCP vs UDP подключения",
+      "type": "piechart",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "count_over_time({job=\"x-ui\", protocol=\"tcp\"} [$__range])",
+          "legendFormat": "TCP"
+        },
+        {
+          "expr": "count_over_time({job=\"x-ui\", protocol=\"udp\"} [$__range])",
+          "legendFormat": "UDP"
+        }
+      ],
+      "options": {
+        "pieType": "donut",
+        "displayLabels": ["percent", "name"]
+      }
+    },
+    {
+      "id": 4,
+      "title": "Новых подключений (последний час)",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "count_over_time({job=\"x-ui\"} |= \"accepted\" [1h])",
+          "legendFormat": "За час"
+        }
+      ],
+      "options": {
+        "reduceOptions": { "calcs": ["last"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "orange" },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "title": "Подключения по времени",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 },
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "sum by (email) (count_over_time({job=\"x-ui\", email=~\"$email\"} |= \"accepted\" [$__interval]))",
+          "legendFormat": "{{email}}"
+        }
+      ],
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum", "max"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Топ пользователей по подключениям",
+      "type": "bargauge",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "sort_desc(sum by (email) (count_over_time({job=\"x-ui\"} |= \"accepted\" [$__range])))",
+          "legendFormat": "{{email}}"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": { "calcs": ["last"] },
+        "displayMode": "gradient"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "continuous-GrYlRd" },
+          "unit": "short"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "title": "Топ доменов",
+      "type": "table",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "topk(20, sum by (destination) (count_over_time({job=\"x-ui\", email=~\"$email\"} | regexp `(?P<protocol>tcp|udp):(?P<destination>[^:]+):(?P<dest_port>\\d+)` [$__range])))",
+          "legendFormat": "{{destination}}"
+        }
+      ],
+      "options": {
+        "sortBy": [{ "displayName": "Value", "desc": true }]
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Лог событий (live)",
+      "type": "logs",
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 8 },
+      "datasource": "Loki",
+      "targets": [
+        {
+          "expr": "{job=\"x-ui\", email=~\"$email\"} |= \"accepted\"",
+          "legendFormat": ""
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": true,
+        "showCommonLabels": false,
+        "wrapLogMessage": false,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      }
+    }
+  ]
+}

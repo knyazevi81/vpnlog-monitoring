@@ -1,0 +1,41 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: x-ui-access
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: x-ui
+          __path__: /var/log/x-ui/access.log
+
+    pipeline_stages:
+      # Парсим строку лога:
+      # 2026/04/15 00:22:09 146.185.211.176:56838 accepted tcp:scontent-fra5-1.cdninstagram.com:443 email: ramella-wl
+      - regex:
+          expression: '^(?P<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) (?P<client_ip>\d+\.\d+\.\d+\.\d+):(?P<client_port>\d+) (?P<status>\w+) (?P<protocol>tcp|udp):(?P<destination>[^:]+):(?P<dest_port>\d+) email: (?P<email>\S+)'
+
+      # Устанавливаем timestamp из лога
+      - timestamp:
+          source: timestamp
+          format: "2006/01/02 15:04:05"
+
+      # Добавляем лейблы для фильтрации в Grafana
+      - labels:
+          status:
+          protocol:
+          email:
+
+      # Дополнительные поля как structured metadata
+      - structured_metadata:
+          client_ip:
+          destination:
+          dest_port:
