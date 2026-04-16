@@ -18,22 +18,17 @@ scrape_configs:
           __path__: /var/log/x-ui/access.log
 
     pipeline_stages:
-      # Фильтруем только строки с "email:" — пропускаем служебные [api -> api]
-      - match:
-          selector: '{job="x-ui"}'
-          stages:
-            - regex:
-                expression: '^(?P<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) [\d.]+:\d+ (?P<status>\w+) (?P<protocol>tcp|udp):(?P<destination>[^:]+):(?P<dest_port>\d+) email: (?P<email>\S+)'
+      - drop:
+          expression: ".*\\[api -> api\\].*"
 
-            - timestamp:
-                source: timestamp
-                format: "2006/01/02 15:04:05"
-                # БЕЗ location — время в логах уже MSK, не сдвигаем
+      - regex:
+          expression: '^(?P<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) [\d.]+:\d+ (?P<status>\w+) (?P<protocol>tcp|udp):(?P<destination>[^:]+):(?P<dest_port>\d+) email: (?P<email>\S+)'
 
-            - labels:
-                status:
-                protocol:
-                email:
+      - timestamp:
+          source: timestamp
+          format: "2006/01/02 15:04:05"
 
-            - drop:
-                expression: ".*\\[api -> api\\].*"
+      - labels:
+          status:
+          protocol:
+          email:
