@@ -24,10 +24,6 @@ scrape_configs:
       - regex:
           expression: '^(?P<timestamp>\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}) [\d.]+:\d+ (?P<status>\w+) (?P<protocol>tcp|udp):(?P<destination>[^:]+):(?P<dest_port>\d+) email: (?P<email>\S+)'
 
-      - timestamp:
-          source: timestamp
-          format: "2006/01/02 15:04:05"
-
       - labels:
           status:
           protocol:
