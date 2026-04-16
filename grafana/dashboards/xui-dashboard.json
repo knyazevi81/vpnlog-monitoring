@@ -5,7 +5,7 @@
   "tags": ["x-ui", "vpn"],
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
   "refresh": "30s",
   "time": { "from": "now-24h", "to": "now" },
   "templating": {
@@ -13,11 +13,16 @@
       {
         "name": "email",
         "type": "query",
-        "datasource": "Loki",
-        "query": "label_values({job=\"x-ui\"}, email)",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "query": {
+          "type": "labelValues",
+          "label": "email",
+          "stream": "{job=\"x-ui\"}"
+        },
         "label": "Пользователь",
         "multi": true,
         "includeAll": true,
+        "allValue": ".*",
         "current": { "text": "All", "value": "$__all" }
       }
     ]
@@ -28,15 +33,15 @@
       "title": "Всего подключений за период",
       "type": "stat",
       "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
-      "datasource": "Loki",
+      "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "count_over_time({job=\"x-ui\", email=~\"$email\"} |= \"accepted\" [$__range])",
+          "expr": "sum(count_over_time({job=\"x-ui\", email=~\"$email\"} |= \"accepted\" [$__range]))",
           "legendFormat": "Подключения"
         }
       ],
       "options": {
-        "reduceOptions": { "calcs": ["sum"] },
+        "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "background",
         "graphMode": "none",
         "orientation": "auto"
@@ -53,15 +58,15 @@
       "title": "Активных пользователей сейчас",
       "type": "stat",
       "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
-      "datasource": "Loki",
+      "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "count(count_over_time({job=\"x-ui\"} |= \"accepted\" | regexp `email: (?P<email>\\S+)` [5m]) by (email))",
+          "expr": "count(sum by (email) (count_over_time({job=\"x-ui\"} |= \"accepted\" [5m])))",
           "legendFormat": "Активные"
         }
       ],
       "options": {
-        "reduceOptions": { "calcs": ["last"] },
+        "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "background",
         "graphMode": "none"
       },
@@ -77,14 +82,14 @@
       "title": "TCP vs UDP подключения",
       "type": "piechart",
       "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
-      "datasource": "Loki",
+      "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "count_over_time({job=\"x-ui\", protocol=\"tcp\"} [$__range])",
+          "expr": "sum(count_over_time({job=\"x-ui\", protocol=\"tcp\"} [$__range]))",
           "legendFormat": "TCP"
         },
         {
-          "expr": "count_over_time({job=\"x-ui\", protocol=\"udp\"} [$__range])",
+          "expr": "sum(count_over_time({job=\"x-ui\", protocol=\"udp\"} [$__range]))",
           "legendFormat": "UDP"
         }
       ],
@@ -98,15 +103,15 @@
       "title": "Новых подключений (последний час)",
       "type": "stat",
       "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
-      "datasource": "Loki",
+      "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "count_over_time({job=\"x-ui\"} |= \"accepted\" [1h])",
+          "expr": "sum(count_over_time({job=\"x-ui\"} |= \"accepted\" [1h]))",
           "legendFormat": "За час"
         }
       ],
       "options": {
-        "reduceOptions": { "calcs": ["last"] },
+        "reduceOptions": { "calcs": ["lastNotNull"] },
         "colorMode": "background",
         "graphMode": "none"
       },
@@ -122,10 +127,10 @@
       "title": "Подключения по времени",
       "type": "timeseries",
       "gridPos": { "x": 0, "y": 4, "w": 24, "h": 8 },
-      "datasource": "Loki",
+      "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "sum by (email) (count_over_time({job=\"x-ui\", email=~\"$email\"} |= \"accepted\" [$__interval]))",
+          "expr": "sum by (email) (count_over_time({job=\"x-ui\", email=~\"$email\"} |= \"accepted\" [$__range]))",
           "legendFormat": "{{email}}"
         }
       ],
@@ -145,16 +150,16 @@
       "title": "Топ пользователей по подключениям",
       "type": "bargauge",
       "gridPos": { "x": 0, "y": 12, "w": 12, "h": 8 },
-      "datasource": "Loki",
+      "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "sort_desc(sum by (email) (count_over_time({job=\"x-ui\"} |= \"accepted\" [$__range])))",
+          "expr": "sum by (email) (count_over_time({job=\"x-ui\"} |= \"accepted\" [$__range]))",
           "legendFormat": "{{email}}"
         }
       ],
       "options": {
         "orientation": "horizontal",
-        "reduceOptions": { "calcs": ["last"] },
+        "reduceOptions": { "calcs": ["lastNotNull"] },
         "displayMode": "gradient"
       },
       "fieldConfig": {
@@ -169,15 +174,16 @@
       "title": "Топ доменов",
       "type": "table",
       "gridPos": { "x": 12, "y": 12, "w": 12, "h": 8 },
-      "datasource": "Loki",
+      "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
-          "expr": "topk(20, sum by (destination) (count_over_time({job=\"x-ui\", email=~\"$email\"} | regexp `(?P<protocol>tcp|udp):(?P<destination>[^:]+):(?P<dest_port>\\d+)` [$__range])))",
+          "expr": "sum by (destination) (count_over_time({job=\"x-ui\", email=~\"$email\"} | regexp `(?P<destination>[^:]+):(?P<dest_port>\\d+)$` [$__range]))",
           "legendFormat": "{{destination}}"
         }
       ],
       "options": {
-        "sortBy": [{ "displayName": "Value", "desc": true }]
+        "sortBy": [{ "displayName": "Value", "desc": true }],
+        "footer": { "show": false }
       },
       "fieldConfig": {
         "defaults": { "unit": "short" }
@@ -188,7 +194,7 @@
       "title": "Лог событий (live)",
       "type": "logs",
       "gridPos": { "x": 0, "y": 20, "w": 24, "h": 8 },
-      "datasource": "Loki",
+      "datasource": { "type": "loki", "uid": "loki" },
       "targets": [
         {
           "expr": "{job=\"x-ui\", email=~\"$email\"} |= \"accepted\"",
